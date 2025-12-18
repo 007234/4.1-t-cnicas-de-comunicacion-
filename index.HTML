@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador Educativo: Técnicas de Conmutación</title>
+    <style>
+        :root { --primary: #2c3e50; --secondary: #34495e; --accent: #3498db; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        header { background: var(--primary); color: white; padding: 1rem; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Panel Lateral de Información */
+        #info-panel { width: 350px; background: white; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+        #info-panel h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 5px; }
+        .detail-section { margin-bottom: 15px; font-size: 0.95rem; line-height: 1.5; }
+        .tag { display: inline-block; background: #e1f5fe; color: #01579b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; }
+
+        /* Área de Simulación */
+        #sim-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: #ecedf0; }
+        .controls { padding: 15px; background: white; width: 100%; display: flex; justify-content: center; gap: 10px; border-bottom: 1px solid #ddd; }
+        button { padding: 10px 15px; border: none; border-radius: 5px; background: var(--secondary); color: white; cursor: pointer; transition: 0.3s; }
+        button:hover { background: var(--accent); }
+        button.active { background: var(--accent); ring: 2px solid white; }
+
+        #canvas-container { position: relative; width: 700px; height: 350px; background: white; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #ccc; }
+        .node { position: absolute; width: 50px; height: 50px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; z-index: 10; border: 3px solid white; }
+        .link { position: absolute; height: 3px; background: #dcdde1; z-index: 5; transform-origin: 0 50%; }
+        .link.active { background: #e74c3c; height: 5px; box-shadow: 0 0 8px #e74c3c; transition: 0.3s; }
+        
+        /* Animaciones */
+        .data-unit { position: absolute; border-radius: 3px; z-index: 15; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: bold; }
+        .packet { background: #9b59b6; width: 18px; height: 18px; }
+        .cell { background: #2ecc71; width: 14px; height: 14px; border: 1px solid #27ae60; }
+        .message { background: #f1c40f; width: 45px; height: 30px; border-radius: 5px; color: #333; }
+        .circuit-flow { background: #e74c3c; width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-size: 0.8rem; opacity: 0.8;">Fundamentos de las Telecomunicaciones - Actividad 4.1</div>
+    <strong>Simulador Pro de Técnicas de Conmutación</strong>
+</header>
+
+<div class="controls">
+    <button onclick="runSim('circuitos')">Conmutación de Circuitos</button>
+    <button onclick="runSim('mensajes')">Conmutación de Mensajes</button>
+    <button onclick="runSim('paquetes')">Conmutación de Paquetes</button>
+    <button onclick="runSim('celdas')">Conmutación de Celdas (ATM)</button>
+</div>
+
+<div class="main-container">
+    <div id="info-panel">
+        <h2 id="info-title">Instrucciones</h2>
+        <div id="info-content">
+            <p>Selecciona una técnica arriba para ver la simulación visual y la información técnica extraída del documento.</p>
+        </div>
+    </div>
+
+    <div id="sim-area">
+        <div id="canvas-container">
+            <div class="node" style="left: 40px; top: 150px;">Emisor</div>
+            <div class="node" style="left: 220px; top: 150px;">Nodo 1</div>
+            <div class="node" style="left: 420px; top: 70px;">Nodo 2A</div>
+            <div class="node" style="left: 420px; top: 230px;">Nodo 2B</div>
+            <div class="node" style="left: 600px; top: 150px;">Destino</div>
+        </div>
+        <p id="status-text" style="margin-top: 15px; color: #666; font-style: italic;">Esperando selección...</p>
+    </div>
+</div>
+
+<script>
+    const container = document.getElementById('canvas-container');
+    const infoTitle = document.getElementById('info-title');
+    const infoContent = document.getElementById('info-content');
+    const statusText = document.getElementById('status-text');
+    let activeIntervals = [];
+
+    // Coordenadas de red
+    const nodes = {
+        start: {x: 65, y: 175},
+        n1: {x: 245, y: 175},
+        n2a: {x: 445, y: 95},
+        n2b: {x: 445, y: 255},
+        end: {x: 625, y: 175}
+    };
+
+    function setupLinks() {
+        const createL = (f, t, id) => {
+            const dx = t.x - f.x, dy = t.y - f.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+            const l = document.createElement('div');
+            l.className = 'link'; l.id = id;
+            l.style.width = dist + 'px'; l.style.left = f.x + 'px'; l.style.top = f.y + 'px';
+            l.style.transform = `rotate(${ang}deg)`;
+            container.appendChild(l);
+        };
+        createL(nodes.start, nodes.n1, 'l1');
+        createL(nodes.n1, nodes.n2a, 'l2a');
+        createL(nodes.n1, nodes.n2b, 'l2b');
+        createL(nodes.n2a, nodes.end, 'l3a');
+        createL(nodes.n2b, nodes.end, 'l3b');
+    }
+    setupLinks();
+
+    function reset() {
+        document.querySelectorAll('.data-unit').forEach(e => e.remove());
+        document.querySelectorAll('.link').forEach(l => l.classList.remove('active'));
+        activeIntervals.forEach(clearInterval);
+        activeIntervals = [];
+    }
+
+    async function animate(path, className, text, speed, waitNode = 0) {
+        const unit = document.createElement('div');
+        unit.className = 'data-unit ' + className;
+        unit.innerText = text;
+        container.appendChild(unit);
+
+        for (let i = 0; i < path.length; i++) {
+            unit.style.transition = `all ${speed}ms linear`;
+            unit.style.left = (path[i].x - (unit.offsetWidth/2)) + 'px';
+            unit.style.top = (path[i].y - (unit.offsetHeight/2)) + 'px';
+            if(i < path.length - 1) {
+                await new Promise(r => setTimeout(r, speed + waitNode));
+            }
+        }
+        unit.remove();
+    }
+
+    const db = {
+        circuitos: {
+            title: "Conmutación de Circuitos",
+            content: `
+                <span class="tag">Modelo Tradicional</span>
+                <div class="detail-section"><strong>Definición:</strong> Creación de un camino físico y lógico conectado de extremo a extremo[cite: 179].</div>
+                <div class="detail-section"><strong>Fases Críticas:</strong>
+                    <ul>
+                        <li>1. Establecimiento: Búsqueda de camino libre[cite: 195].</li>
+                        <li>2. Transferencia: Flujo transparente sin procesamiento en nodos[cite: 197].</li>
+                        <li>3. Desconexión: Liberación de recursos[cite: 199].</li>
+                    </ul>
+                </div>
+                <div class="detail-section"><strong>Ventaja:</strong> Capacidad garantizada y sin retardo variable (jitter)[cite: 181, 182].</div>
+                <div class="detail-section"><strong>Ejemplo:</strong> Red Telefónica Pública (POTS)[cite: 184].</div>
+            `
+        },
+        mensajes: {
+            title: "Conmutación de Mensajes",
+            content: `
+                <span class="tag">Store and Forward</span>
+                <div class="detail-section"><strong>Mecanismo:</strong> El nodo recibe el mensaje íntegro, lo valida y lo reenvía cuando el enlace está libre [cite: 243-247].</div>
+                <div class="detail-section"><strong>Ventajas:</strong>
+                    <ul>
+                        <li>Independencia de disponibilidad: El receptor no tiene que estar conectado[cite: 250].</li>
+                        <li>Gestión de prioridades[cite: 252].</li>
+                    </ul>
+                </div>
+                <div class="detail-section"><strong>Desventaja:</strong> Latencia elevada y alta necesidad de almacenamiento en nodos[cite: 256, 257].</div>
+            `
+        },
+        paquetes: {
+            title: "Conmutación de Paquetes",
+            content: `
+                <span class="tag">Fragmentación Dinámica</span>
+                <div class="detail-section"><strong>Concepto:</strong> Divide la información en unidades con etiqueta (header) de destino[cite: 206, 209].</div>
+                <div class="detail-section"><strong>Evolución:</strong>
+                    <ul>
+                        <li><strong>X.25:</strong> Control de errores nodo a nodo; seguro pero lento[cite: 219, 220].</li>
+                        <li><strong>Frame Relay:</strong> "Best Effort", sin verificación en nodos intermedios, mucho más rápido[cite: 225, 233].</li>
+                    </ul>
+                </div>
+                <div class="detail-section"><strong>Eficiencia:</strong> Uso estadístico del medio; si no hay datos, el canal queda libre[cite: 210, 211].</div>
+            `
+        },
+        celdas: {
+            title: "Conmutación de Celdas (ATM)",
+            content: `
+                <span class="tag">Asynchronous Transfer Mode</span>
+                <div class="detail-section"><strong>Celdas de 53 Bytes:</strong> 5 bytes de cabecera y 48 de carga útil (payload)[cite: 125, 127, 128].</div>
+                <div class="detail-section"><strong>Identificadores:</strong> Utiliza VPI (Virtual Path) y VCI (Virtual Channel) para el enrutamiento[cite: 133, 134].</div>
+                <div class="detail-section"><strong>Calidad de Servicio (QoS):</strong> Garantiza niveles como CBR (flujo constante para voz) o VBR (tráfico variable)[cite: 154, 155].</div>
+            `
+        }
+    };
+
+    async function runSim(type) {
+        reset();
+        infoTitle.innerText = db[type].title;
+        infoContent.innerHTML = db[type].content;
+        
+        if(type === 'circuitos') {
+            statusText.innerText = "Fase 1: Estableciendo circuito (Señalización)...";
+            document.getElementById('l1').classList.add('active');
+            await new Promise(r => setTimeout(r, 600));
+            document.getElementById('l2a').classList.add('active');
+            await new Promise(r => setTimeout(r, 600));
+            document.getElementById('l3a').classList.add('active');
+            
+            statusText.innerText = "Fase 2: Transferencia de datos constante...";
+            const flow = setInterval(() => {
+                animate([nodes.start, nodes.n1, nodes.n2a, nodes.end], 'circuit-flow', '', 1200);
+            }, 400);
+            activeIntervals.push(flow);
+        }
+        
+        if(type === 'mensajes') {
+            statusText.innerText = "Almacenando mensaje completo en cada nodo...";
+            animate([nodes.start, nodes.n1, nodes.n2b, nodes.end], 'message', 'MSG', 1000, 1500);
+        }
+        
+        if(type === 'paquetes') {
+            statusText.innerText = "Fragmentando en paquetes con rutas dinámicas...";
+            for(let i=1; i<=6; i++) {
+                let p = (i % 2 === 0) ? [nodes.start, nodes.n1, nodes.n2a, nodes.end] : [nodes.start, nodes.n1, nodes.n2b, nodes.end];
+                animate(p, 'packet', 'P'+i, 1000);
+                await new Promise(r => setTimeout(r, 300));
+            }
+        }
+
+        if(type === 'celdas') {
+            statusText.innerText = "Transmitiendo celdas fijas de 53 bytes (ATM)...";
+            const flow = setInterval(() => {
+                animate([nodes.start, nodes.n1, nodes.n2a, nodes.end], 'cell', '53B', 800);
+            }, 200);
+            activeIntervals.push(flow);
+        }
+    }
+</script>
+
+</body>
+</html>
