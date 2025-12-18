@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Educativo de Multiplexación</title>
+    <style>
+        :root {
+            --primary: #003366;
+            --secondary: #0056b3;
+            --light: #f8f9fa;
+            --accent: #e67e22;
+        }
+        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; margin: 0; background: #eceff1; color: #333; }
+        .container { max-width: 1100px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        header { text-align: center; border-bottom: 3px solid var(--primary); padding-bottom: 15px; margin-bottom: 25px; }
+        
+        /* Controles del Simulador */
+        .simulator-controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        button { padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; background: var(--secondary); color: white; font-weight: bold; transition: 0.3s; }
+        button:hover { background: var(--primary); transform: translateY(-2px); }
+        button.active { background: var(--accent); }
+
+        /* Área de Visualización */
+        #display-area { border: 2px solid #ddd; border-radius: 10px; padding: 25px; background: var(--light); min-height: 400px; }
+        .info-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .info-panel { grid-template-columns: 1fr; } }
+        
+        .tech-detail { padding: 15px; background: white; border-left: 5px solid var(--accent); border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+        .tech-detail h3 { margin-top: 0; color: var(--primary); }
+        
+        .diagram-box { text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
+        
+        .source-tag { font-size: 0.85em; color: #7f8c8d; font-style: italic; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+        th { background: var(--primary); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>4.2 Multiplexación: Simulador de Conceptos</h1>
+        <p><strong>Estudiante:</strong> Lopez Lucas Jose Alfredo | <strong>Docente:</strong> Osiel Rendón Picaseño</p>
+    </header>
+
+    <div class="simulator-controls">
+        <button onclick="showInfo('TDM', this)">TDM (Tiempo)</button>
+        <button onclick="showInfo('FDM', this)">FDM (Frecuencia)</button>
+        <button onclick="showInfo('WDM', this)">WDM (Longitud de Onda)</button>
+        <button onclick="showInfo('CDM', this)">CDM (Código)</button>
+        <button onclick="showInfo('SDM', this)">SDM (Espacial)</button>
+    </div>
+
+    <div id="display-area">
+        <div id="welcome-msg" style="text-align:center; padding-top:100px;">
+            <h2>Bienvenido al Simulador de Multiplexación</h2>
+            <p>Selecciona una técnica arriba para explorar su funcionamiento, aplicaciones y detalles técnicos detallados.</p>
+            
+        </div>
+        <div id="content" style="display:none;">
+            </div>
+    </div>
+</div>
+
+<script>
+const data = {
+    TDM: {
+        title: "Multiplexación por División de Tiempo (TDM)",
+        desc: "Técnica digital que divide el dominio del tiempo en intervalos recurrentes llamados <i>time slots</i>[cite: 19].",
+        diagram: "",
+        steps: [
+            "Muestreo: Las señales se digitalizan mediante modulación por pulsos[cite: 22].",
+            "Asignación: A cada canal se le asigna un turno específico[cite: 23].",
+            "Entramado: Se construye una 'trama' con muestras de cada canal[cite: 24].",
+            "Transmisión: La trama se envía a alta velocidad[cite: 25].",
+            "Desmultiplexación: El receptor sincronizado reconstruye las señales[cite: 26]."
+        ],
+        apps: "Telefonía móvil GSM (2G) y Backhaul Móvil[cite: 28].",
+        pros: "Más barata y robusta frente al ruido[cite: 29].",
+        cons: "Sincronización crítica y latencia inherente[cite: 31, 32]."
+    },
+    FDM: {
+        title: "Multiplexación por División de Frecuencia (FDM)",
+        desc: "Divide el ancho de banda en sub-bandas de frecuencias que no se superponen[cite: 34].",
+        diagram: "",
+        steps: [
+            "Modulación: Cada señal base modula una portadora de alta frecuencia[cite: 37].",
+            "Suma Lineal: Las señales moduladas viajan juntas por el medio[cite: 38].",
+            "Filtrado: El receptor usa filtros pasabanda para separar las señales[cite: 39].",
+            "OFDM: Evolución que permite solapar frecuencias sin interferencia."
+        ],
+        apps: "Radiodifusión (AM/FM) y Televisión por cable (CATV)[cite: 41].",
+        pros: "Transmisión simultánea sin turnos[cite: 36].",
+        cons: "Requiere bandas de guarda para evitar interferencias[cite: 77]."
+    },
+    WDM: {
+        title: "Multiplexación por División de Longitud de Onda (WDM)",
+        desc: "Aplicación de la lógica FDM al medio óptico, transportando 'colores' de luz[cite: 45].",
+        diagram: "",
+        details: "Utiliza un multiplexor óptico para combinar longitudes de onda (λ) en un solo haz[cite: 47, 48].",
+        table: `
+            <table>
+                <tr><th>Variante</th><th>Separación</th><th>Uso Principal</th></tr>
+                <tr><td>CWDM</td><td>20 nm [cite: 51]</td><td>Redes Metropolitanas (<80km) [cite: 52]</td></tr>
+                <tr><td>DWDM</td><td>0.8/0.4 nm [cite: 54]</td><td>Redes Troncales y Submarinas [cite: 54]</td></tr>
+            </table>`,
+        record: "Récord mundial (2024): 402 Terabits por segundo por el NICT[cite: 59]."
+    },
+    CDM: {
+        title: "Multiplexación por División de Código (CDM)",
+        desc: "Permite el uso simultáneo de todo el ancho de banda mediante códigos matemáticos[cite: 61, 62].",
+        diagram: "",
+        analogy: "Como una fiesta donde todos hablan idiomas distintos; solo te entiendes con quien comparte tu código[cite: 69].",
+        features: [
+            "Espectro Ensanchado: Señal multiplicada por código pseudoaleatorio[cite: 65].",
+            "Seguridad: Señal a menudo por debajo del nivel de ruido, difícil de interceptar[cite: 71, 72].",
+            "Resistencia: Alta contra interferencias intencionales (jamming)[cite: 73]."
+        ],
+        apps: "Redes 3G (W-CDMA) y el sistema GPS[cite: 75, 76]."
+    },
+    SDM: {
+        title: "Multiplexación por División Espacial (SDM)",
+        desc: "Tendencia dominante para el futuro, especialmente para 6G[cite: 80].",
+        diagram: "",
+        tech: [
+            "Inalámbrico (MIMO): Múltiples antenas para flujos paralelos[cite: 81].",
+            "Fibra Óptica (MCF): Fibras multi-núcleo con 4 o más núcleos independientes[cite: 82]."
+        ]
+    }
+};
+
+function showInfo(type, btn) {
+    document.getElementById('welcome-msg').style.display = 'none';
+    const content = document.getElementById('content');
+    content.style.display = 'block';
+    
+    // Reset buttons
+    document.querySelectorAll('.simulator-controls button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const item = data[type];
+    let html = `<h2>${item.title}</h2><div class="info-panel">`;
+    
+    html += `<div class="tech-detail"><h3>Concepto y Funcionamiento</h3><p>${item.desc}</p>`;
+    
+    if(item.steps) {
+        html += "<ul>" + item.steps.map(s => `<li>${s}</li>`).join('') + "</ul>";
+    }
+    if(item.details) html += `<p>${item.details}</p>`;
+    if(item.analogy) html += `<blockquote><strong>Analogía:</strong> ${item.analogy}</blockquote>`;
+    if(item.features) html += "<ul>" + item.features.map(f => `<li>${f}</li>`).join('') + "</ul>";
+    if(item.tech) html += "<ul>" + item.tech.map(t => `<li>${t}</li>`).join('') + "</ul>";
+    
+    html += `</div><div class="diagram-box"><h3>Simulación Visual</h3><div style="padding:20px; background:#eee; margin-bottom:10px; border-radius:5px;">${item.diagram}</div>`;
+    
+    if(item.apps) html += `<p><strong>Aplicaciones:</strong> ${item.apps}</p>`;
+    if(item.table) html += item.table;
+    if(item.record) html += `<p style="color:var(--accent)"><strong>Logro:</strong> ${item.record}</p>`;
+    
+    html += `</div></div>`;
+    content.innerHTML = html;
+}
+</script>
+
+</body>
+</html>
